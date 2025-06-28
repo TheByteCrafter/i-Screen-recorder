@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nebula Screen Recorder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #1e40af;
+            --primary-light: #3b82f6;
+            --secondary: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --text: #f8fafc;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        
+        .btn {
+            transition: all 0.2s ease;
+            transform: translateY(0);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-start {
+            background-color: var(--secondary);
+        }
+        
+        .btn-pause {
+            background-color: var(--warning);
+        }
+        
+        .btn-stop {
+            background-color: var(--danger);
+        }
+        
+        .btn-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .video-preview {
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+        
+        .ribbon-item:hover {
+            background-color: rgba(59, 130, 246, 0.2);
+        }
+        
+        .source-option {
+            transition: all 0.2s ease;
+        }
+        
+        .source-option:hover {
+            background-color: rgba(59, 130, 246, 0.2);
+            transform: scale(1.02);
+        }
+        
+        .source-option.active {
+            background-color: rgba(59, 130, 246, 0.4);
+            border-color: var(--primary-light);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .recording-indicator {
+            animation: pulse 1.5s infinite;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+    <!-- Ribbon Bar -->
+    <div class="glass flex items-center justify-between px-4 py-2 border-b border-gray-700">
+        <div class="flex items-center space-x-6">
+            <div class="text-xl font-bold text-blue-400">Nebula Recorder</div>
+            <div class="flex space-x-1">
+                <div class="ribbon-item px-3 py-1 rounded cursor-pointer">File</div>
+                <div class="ribbon-item px-3 py-1 rounded cursor-pointer">Edit</div>
+                <div class="ribbon-item px-3 py-1 rounded cursor-pointer">View</div>
+                <div class="ribbon-item px-3 py-1 rounded cursor-pointer">Settings</div>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="p-2 rounded-full hover:bg-blue-900/30 cursor-pointer">
+                <i class="fas fa-cog text-blue-400"></i>
+            </div>
+            <div class="p-2 rounded-full hover:bg-blue-900/30 cursor-pointer">
+                <i class="fas fa-question-circle text-blue-400"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar -->
+        <div class="w-64 bg-slate-800/50 p-4 border-r border-gray-700 hidden md:block">
+            <h3 class="text-lg font-semibold mb-4 text-blue-300">Recording Options</h3>
+            
+            <div class="mb-6">
+                <h4 class="text-sm font-medium mb-2 text-gray-300">Source</h4>
+                <div class="space-y-2">
+                    <div class="source-option active p-3 rounded-lg border border-gray-700 cursor-pointer" data-source="fullscreen">
+                        <div class="flex items-center">
+                            <i class="fas fa-desktop mr-2 text-blue-400"></i>
+                            <span>Full Screen</span>
+                        </div>
+                    </div>
+                    <div class="source-option p-3 rounded-lg border border-gray-700 cursor-pointer" data-source="window">
+                        <div class="flex items-center">
+                            <i class="fas fa-window-maximize mr-2 text-blue-400"></i>
+                            <span>Application Window</span>
+                        </div>
+                    </div>
+                    <div class="source-option p-3 rounded-lg border border-gray-700 cursor-pointer" data-source="tab">
+                        <div class="flex items-center">
+                            <i class="fas fa-window-restore mr-2 text-blue-400"></i>
+                            <span>Browser Tab</span>
+                        </div>
+                    </div>
+                    <div class="source-option p-3 rounded-lg border border-gray-700 cursor-pointer" data-source="region">
+                        <div class="flex items-center">
+                            <i class="fas fa-vector-square mr-2 text-blue-400"></i>
+                            <span>Custom Region</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <h4 class="text-sm font-medium mb-2 text-gray-300">Audio</h4>
+                <div class="flex items-center justify-between mb-2">
+                    <span>System Audio</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" value="" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span>Microphone</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" value="" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+            </div>
+            
+            <div>
+                <h4 class="text-sm font-medium mb-2 text-gray-300">Save Location</h4>
+                <div class="flex items-center bg-slate-700/50 rounded-lg p-2">
+                    <i class="fas fa-folder-open mr-2 text-blue-400"></i>
+                    <span class="text-sm truncate">~/Recordings</span>
+                    <button class="ml-auto text-blue-400 hover:text-blue-300">
+                        <i class="fas fa-ellipsis-h"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Panel -->
+        <div class="flex-1 flex flex-col p-6 overflow-auto">
+            <!-- Preview Area -->
+            <div class="flex-1 flex flex-col items-center justify-center mb-6">
+                <div class="w-full max-w-4xl h-96 bg-slate-800 rounded-xl video-preview overflow-hidden flex items-center justify-center relative">
+                    <video id="preview" autoplay muted class="w-full h-full object-contain bg-black hidden"></video>
+                    <div id="preview-placeholder" class="text-center p-6">
+                        <i class="fas fa-desktop text-5xl text-blue-400 mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">Screen Preview</h3>
+                        <p class="text-gray-400 max-w-md">Start recording to see a live preview of your screen, window, or tab.</p>
+                    </div>
+                    <div id="recording-indicator" class="absolute top-4 left-4 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium hidden recording-indicator">
+                        <i class="fas fa-circle mr-1"></i> REC
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Controls -->
+            <div class="flex flex-col items-center">
+                <div class="flex space-x-4 mb-4">
+                    <button id="startBtn" class="btn btn-start px-6 py-3 rounded-full font-medium text-white flex items-center">
+                        <i class="fas fa-play mr-2"></i> Start Recording
+                    </button>
+                    <button id="pauseBtn" class="btn btn-pause px-6 py-3 rounded-full font-medium text-white flex items-center opacity-50 cursor-not-allowed" disabled>
+                        <i class="fas fa-pause mr-2"></i> Pause
+                    </button>
+                    <button id="stopBtn" class="btn btn-stop px-6 py-3 rounded-full font-medium text-white flex items-center opacity-50 cursor-not-allowed" disabled>
+                        <i class="fas fa-stop mr-2"></i> Stop
+                    </button>
+                </div>
+                
+                <div class="flex items-center space-x-6 text-sm text-gray-400">
+                    <div class="flex items-center">
+                        <i class="fas fa-clock mr-2"></i>
+                        <span id="timer">00:00:00</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-save mr-2"></i>
+                        <span id="fileSize">0 MB</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-microphone mr-2"></i>
+                        <span>System Audio</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Status Bar -->
+    <div class="glass flex items-center justify-between px-4 py-2 text-sm border-t border-gray-700">
+        <div class="flex items-center space-x-4">
+            <div id="status" class="flex items-center">
+                <i class="fas fa-info-circle mr-2 text-blue-400"></i>
+                <span>Ready to record</span>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center">
+                <i class="fas fa-microchip mr-2 text-blue-400"></i>
+                <span>CPU: 12%</span>
+            </div>
+            <div class="flex items-center">
+                <i class="fas fa-memory mr-2 text-blue-400"></i>
+                <span>RAM: 4.2/16GB</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const startBtn = document.getElementById('startBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const preview = document.getElementById('preview');
+            const previewPlaceholder = document.getElementById('preview-placeholder');
+            const recordingIndicator = document.getElementById('recording-indicator');
+            const timerElement = document.getElementById('timer');
+            const fileSizeElement = document.getElementById('fileSize');
+            const statusElement = document.getElementById('status');
+            const sourceOptions = document.querySelectorAll('.source-option');
+            
+            // Variables
+            let mediaRecorder;
+            let recordedChunks = [];
+            let startTime;
+            let timerInterval;
+            let isPaused = false;
+            let selectedSource = 'fullscreen';
+            
+            // Source selection
+            sourceOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    sourceOptions.forEach(opt => opt.classList.remove('active'));
+                    option.classList.add('active');
+                    selectedSource = option.dataset.source;
+                    updateStatus(`Source set to: ${option.querySelector('span').textContent}`);
+                });
+            });
+            
+            // Start Recording
+            startBtn.addEventListener('click', async () => {
+                try {
+                    updateStatus('Requesting screen capture...');
+                    
+                    const constraints = {
+                        video: {
+                            displaySurface: selectedSource === 'region' ? 'browser' : selectedSource,
+                            logicalSurface: true
+                        },
+                        audio: document.querySelector('input[type="checkbox"]').checked,
+                        preferCurrentTab: selectedSource === 'tab'
+                    };
+                    
+                    const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+                    
+                    // Show preview
+                    preview.srcObject = stream;
+                    preview.classList.remove('hidden');
+                    previewPlaceholder.classList.add('hidden');
+                    recordingIndicator.classList.remove('hidden');
+                    
+                    // Setup media recorder
+                    mediaRecorder = new MediaRecorder(stream, {
+                        mimeType: 'video/webm;codecs=vp9'
+                    });
+                    
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            recordedChunks.push(event.data);
+                            updateFileSize();
+                        }
+                    };
+                    
+                    mediaRecorder.onstop = () => {
+                        saveRecording();
+                        resetUI();
+                    };
+                    
+                    mediaRecorder.onpause = () => {
+                        updateStatus('Recording paused');
+                        isPaused = true;
+                        pauseBtn.innerHTML = '<i class="fas fa-play mr-2"></i> Resume';
+                    };
+                    
+                    mediaRecorder.onresume = () => {
+                        updateStatus('Recording resumed');
+                        isPaused = false;
+                        pauseBtn.innerHTML = '<i class="fas fa-pause mr-2"></i> Pause';
+                    };
+                    
+                    // Start recording
+                    mediaRecorder.start(100); // Collect data every 100ms
+                    startTime = Date.now();
+                    startTimer();
+                    updateStatus('Recording started');
+                    
+                    // Update UI
+                    startBtn.classList.add('hidden');
+                    pauseBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    pauseBtn.disabled = false;
+                    stopBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    stopBtn.disabled = false;
+                    
+                    // Handle when user stops sharing via browser UI
+                    stream.getVideoTracks()[0].onended = () => {
+                        if (mediaRecorder.state !== 'inactive') {
+                            mediaRecorder.stop();
+                        }
+                    };
+                    
+                } catch (err) {
+                    console.error('Error:', err);
+                    updateStatus('Error: ' + err.message);
+                }
+            });
+            
+            // Pause/Resume Recording
+            pauseBtn.addEventListener('click', () => {
+                if (mediaRecorder.state === 'recording') {
+                    mediaRecorder.pause();
+                    clearInterval(timerInterval);
+                } else if (mediaRecorder.state === 'paused') {
+                    mediaRecorder.resume();
+                    startTimer();
+                }
+            });
+            
+            // Stop Recording
+            stopBtn.addEventListener('click', () => {
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                    preview.srcObject.getTracks().forEach(track => track.stop());
+                }
+            });
+            
+            // Timer functions
+            function startTimer() {
+                clearInterval(timerInterval);
+                timerInterval = setInterval(updateTimer, 1000);
+            }
+            
+            function updateTimer() {
+                if (!isPaused) {
+                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                    const hours = Math.floor(elapsed / 3600).toString().padStart(2, '0');
+                    const minutes = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0');
+                    const seconds = (elapsed % 60).toString().padStart(2, '0');
+                    timerElement.textContent = `${hours}:${minutes}:${seconds}`;
+                }
+            }
+            
+            // File size calculation
+            function updateFileSize() {
+                const totalSize = recordedChunks.reduce((acc, chunk) => acc + chunk.size, 0);
+                const sizeInMB = (totalSize / (1024 * 1024)).toFixed(2);
+                fileSizeElement.textContent = `${sizeInMB} MB`;
+            }
+            
+            // Save recording
+            function saveRecording() {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `recording-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                updateStatus('Recording saved');
+            }
+            
+            // Reset UI
+            function resetUI() {
+                clearInterval(timerInterval);
+                timerElement.textContent = '00:00:00';
+                fileSizeElement.textContent = '0 MB';
+                
+                startBtn.classList.remove('hidden');
+                pauseBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                pauseBtn.disabled = true;
+                pauseBtn.innerHTML = '<i class="fas fa-pause mr-2"></i> Pause';
+                stopBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                stopBtn.disabled = true;
+                
+                preview.srcObject = null;
+                preview.classList.add('hidden');
+                previewPlaceholder.classList.remove('hidden');
+                recordingIndicator.classList.add('hidden');
+                
+                recordedChunks = [];
+                isPaused = false;
+            }
+            
+            // Update status
+            function updateStatus(message) {
+                statusElement.querySelector('span').textContent = message;
+            }
+            
+            // Simulate system stats (for demo purposes)
+            setInterval(() => {
+                const cpuElement = document.querySelector('.fa-microchip').nextElementSibling;
+                const ramElement = document.querySelector('.fa-memory').nextElementSibling;
+                
+                // Random values for demo
+                const cpu = Math.floor(Math.random() * 20) + 5;
+                const ramUsed = (Math.random() * 2 + 3).toFixed(1);
+                
+                cpuElement.textContent = `CPU: ${cpu}%`;
+                ramElement.textContent = `RAM: ${ramUsed}/16GB`;
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
