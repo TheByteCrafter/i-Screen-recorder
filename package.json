@@ -11,6 +11,13 @@
     "publish": "electron-forge publish",
     "lint": "echo \"No linting configured\""
   },
+  "build": {
+    "files": [
+      "index.html",
+      "index.js",
+      "preload.js"
+    ]
+  },
   "keywords": [],
   "author": {
     "name": "TheByteCrafter",
